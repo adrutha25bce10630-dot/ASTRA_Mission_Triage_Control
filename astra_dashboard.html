@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASTRA — Uncertainty-Aware LEO Conjunction Triage</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #0e1626;
+      --panel-2: #131e33;
+      --border: #1e2d4a;
+      --text: #e6edf7;
+      --muted: #8fa1bf;
+      --accent: #38bdf8;
+      --ignore: #22c55e;
+      --monitor: #f59e0b;
+      --act: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+    .container { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+    header {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 18px 22px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 1.35rem; letter-spacing: 0.5px; color: #fff; }
+    header p { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    .btn {
+      background: var(--accent); color: #04101c; border: none; border-radius: 8px;
+      padding: 10px 14px; font-weight: 700; cursor: pointer; font-size: 0.9rem;
+    }
+    .btn.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+    .btn:hover { opacity: 0.92; }
+    .grid-2 { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 18px; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: 12px; color: #f1f5f9; }
+    .event-list { display: grid; gap: 10px; }
+    .event-item {
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .event-item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .badge {
+      padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+    }
+    .badge.Ignore { background: rgba(34,197,94,0.15); color: var(--ignore); border: 1px solid rgba(34,197,94,0.4); }
+    .badge.Monitor { background: rgba(245,158,11,0.15); color: var(--monitor); border: 1px solid rgba(245,158,11,0.4); }
+    .badge.Act { background: rgba(239,68,68,0.15); color: var(--act); border: 1px solid rgba(239,68,68,0.4); }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+    .metric-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .metric-label { font-size: 0.78rem; color: var(--muted); }
+    .metric-val { font-size: 1.15rem; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 650px) { .form-grid { grid-template-columns: 1fr; } }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+    input, textarea {
+      width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; font-size: 0.84rem;
+    }
+    textarea { min-height: 68px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .full { grid-column: 1 / -1; }
+    .status-note { font-size: 0.84rem; color: var(--muted); margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>ASTRA Mission Triage Console</h1>
+        <p>SGP4 propagation + RTN quantile uncertainty bounds + encounter-plane Pc triage</p>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn secondary" onclick="loadSavedResults()">Reload /api/results</button>
+        <button class="btn" onclick="runLiveTriage()">Run Live Triage</button>
+      </div>
+    </header>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Conjunction Candidates</h2>
+        <div id="eventList" class="event-list"></div>
+        <div id="statusNote" class="status-note">Connecting to backend...</div>
+      </div>
+
+      <div class="card">
+        <h2>Selected Event Detail</h2>
+        <div id="detailPanel">
+          <p class="status-note">Select or run a conjunction to inspect Pc and RTN error quantiles.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Live TLE Conjunction Screener (/api/triage)</h2>
+      <div class="form-grid">
+        <div>
+          <label>Primary Name</label>
+          <input id="pName" value="ISS (ZARYA)" />
+        </div>
+        <div>
+          <label>Secondary Name</label>
+          <input id="sName" value="SAMPLE DEBRIS" />
+        </div>
+        <div>
+          <label>Primary TLE (Line 1 & Line 2)</label>
+          <textarea id="pTle">1 25544U 98067A   24001.50000000  .00016717  00000-0  30123-3 0  9993
+2 25544  51.6412  15.2345 0006789  45.1234  80.5678 15.49812345432101</textarea>
+        </div>
+        <div>
+          <label>Secondary TLE (Line 1 & Line 2)</label>
+          <textarea id="sTle">1 40001U 98067B   24001.50000000  .00021000  00000-0  41000-3 0  9991
+2 40001  51.6420  15.2360 0007100  46.0000  79.9000 15.49950000123456</textarea>
+        </div>
+        <div>
+          <label>Horizon (hours) & Distance Filter (km)</label>
+          <div style="display:flex; gap:8px;">
+            <input id="horizonHours" type="number" step="1" value="48" />
+            <input id="distFilter" type="number" step="1" value="50" />
+          </div>
+        </div>
+        <div>
+          <label>Solar Flux F10.7 (sfu) & Geomagnetic Kp</label>
+          <div style="display:flex; gap:8px;">
+            <input id="f107" type="number" step="1" value="145" />
+            <input id="kp" type="number" step="0.1" value="3.2" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const FALLBACK_EVENTS = [
+      {
+        event_id: "DEMO-001",
+        tca_utc: "2026-11-22T09:30:00Z",
+        primary: "SENTINEL-2A (NORAD 40697)",
+        secondary: "COSMOS-2251 DEB (NORAD 34427)",
+        miss_distance_km: 0.751,
+        combined_radius_m: 9.0,
+        pc: 4.8e-6,
+        pc_low: 1.1e-6,
+        pc_high: 1.4e-5,
+        action: "Monitor",
+        primary_rtn_bounds_km: {
+          R: { low: 0.015, median: 0.042, high: 0.095 },
+          T: { low: 0.140, median: 0.380, high: 0.820 },
+          N: { low: 0.012, median: 0.031, high: 0.070 }
+        }
+      }
+    ];
+
+    let eventsData = [];
+    let selectedIndex = 0;
+
+    function renderList() {
+      const listEl = document.getElementById("eventList");
+      listEl.innerHTML = "";
+      if (!eventsData.length) {
+        listEl.innerHTML = `<p class="status-note">No events loaded yet. Click "Run Live Triage" or run run_triage_pipeline.py.</p>`;
+        return;
+      }
+      eventsData.forEach((ev, idx) => {
+        const div = document.createElement("div");
+        div.className = `event-item ${idx === selectedIndex ? "active" : ""}`;
+        div.onclick = () => { selectedIndex = idx; renderList(); renderDetail(); };
+        div.innerHTML = `
+          <div>
+            <strong>${ev.event_id || "EVENT"}</strong> — ${ev.primary} vs ${ev.secondary}<br/>
+            <span style="font-size:0.8rem; color:var(--muted);">TCA: ${ev.tca_utc || "-"} | Miss: ${ev.miss_distance_km ?? "-"} km</span>
+          </div>
+          <span class="badge ${ev.action || "Monitor"}">${ev.action || "Monitor"}</span>
+        `;
+        listEl.appendChild(div);
+      });
+    }
+
+    function renderDetail() {
+      const panel = document.getElementById("detailPanel");
+      const ev = eventsData[selectedIndex];
+      if (!ev) {
+        panel.innerHTML = `<p class="status-note">No event selected.</p>`;
+        return;
+      }
+      const pcStr = typeof ev.pc === "number" ? ev.pc.toExponential(2) : "-";
+      const boundsStr = (typeof ev.pc_low === "number" && typeof ev.pc_high === "number")
+        ? `${ev.pc_low.toExponential(1)} – ${ev.pc_high.toExponential(1)}`
+        : "N/A";
+      const rtn = ev.primary_rtn_bounds_km || {};
+
+      panel.innerHTML = `
+        <div class="metrics">
+          <div class="metric-box">
+            <div class="metric-label">Nominal Pc</div>
+            <div class="metric-val">${pcStr}</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Pc Quantile Range</div>
+            <div class="metric-val" style="font-size:0.95rem;">${boundsStr}</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Triage Verdict</div>
+            <div class="metric-val"><span class="badge ${ev.action || "Monitor"}">${ev.action || "Monitor"}</span></div>
+          </div>
+        </div>
+        <p style="font-size:0.85rem; color:var(--muted); margin-bottom:10px;">
+          Primary RTN Error Quantiles (km) — Miss Distance: <strong>${ev.miss_distance_km} km</strong> | Combined Radius: <strong>${ev.combined_radius_m ?? "-"} m</strong>
+        </p>
+        <table>
+          <thead>
+            <tr><th>Axis</th><th>q10 (Low)</th><th>q50 (Median)</th><th>q90 (High)</th></tr>
+          </thead>
+          <tbody>
+            ${["R", "T", "N"].map(ax => `
+              <tr>
+                <td><strong>${ax}</strong></td>
+                <td>${rtn[ax]?.low ?? "-"}</td>
+                <td>${rtn[ax]?.median ?? "-"}</td>
+                <td>${rtn[ax]?.high ?? "-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function loadSavedResults() {
+      const statusEl = document.getElementById("statusNote");
+      try {
+        const res = await fetch("/api/results");
+        const data = await res.json();
+        if (Array.isArray(data.results) && data.results.length > 0) {
+          eventsData = data.results;
+          selectedIndex = 0;
+          statusEl.textContent = `Loaded ${eventsData.length} result(s) from /api/results.`;
+        } else {
+          eventsData = FALLBACK_EVENTS;
+          selectedIndex = 0;
+          statusEl.textContent = data.note || "Showing sample fallback event.";
+        }
+      } catch (err) {
+        eventsData = FALLBACK_EVENTS;
+        selectedIndex = 0;
+        statusEl.textContent = "Backend not reachable; showing sample fallback event.";
+      }
+      renderList();
+      renderDetail();
+    }
+
+    async function runLiveTriage() {
+      const statusEl = document.getElementById("statusNote");
+      const pLines = document.getElementById("pTle").value.trim().split(/\r?\n/);
+      const sLines = document.getElementById("sTle").value.trim().split(/\r?\n/);
+
+      if (pLines.length < 2 || sLines.length < 2) {
+        statusEl.textContent = "Please provide Line 1 and Line 2 for both Primary and Secondary TLEs.";
+        return;
+      }
+
+      statusEl.textContent = "Running SGP4 screening + quantile error + Pc triage...";
+      try {
+        const res = await fetch("/api/triage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            primary: { name: document.getElementById("pName").value.trim(), line1: pLines[0].trim(), line2: pLines[1].trim(), hard_body_radius_m: 12.0, rcs_m2: 150.0 },
+            secondary: { name: document.getElementById("sName").value.trim(), line1: sLines[0].trim(), line2: sLines[1].trim(), hard_body_radius_m: 3.0, rcs_m2: 0.5 },
+            horizon_hours: Number(document.getElementById("horizonHours").value || 48),
+            distance_filter_km: Number(document.getElementById("distFilter").value || 50),
+            f10_7: Number(document.getElementById("f107").value || 145),
+            kp: Number(document.getElementById("kp").value || 3.2)
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          statusEl.textContent = `Error: ${data.error || "Live triage failed"}`;
+          return;
+        }
+        if (Array.isArray(data.assessments) && data.assessments.length > 0) {
+          eventsData = data.assessments;
+          selectedIndex = 0;
+          statusEl.textContent = `Found ${data.candidate_count} close-approach candidate(s).`;
+        } else {
+          statusEl.textContent = `Screened window: 0 candidates within ${document.getElementById("distFilter").value} km. Try increasing distance filter (e.g. 200 km) to see a sample hit.`;
+        }
+        renderList();
+        renderDetail();
+      } catch (err) {
+        statusEl.textContent = `Request failed: ${err.message}`;
+      }
+    }
+
+    loadSavedResults();
+  </script>
+</body>
+</html>

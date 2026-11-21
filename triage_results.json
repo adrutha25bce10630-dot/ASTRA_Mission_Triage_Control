@@ -1,0 +1,96 @@
+[
+  {
+    "event_id": "ASTRA-2026-001",
+    "tca_utc": "2026-11-23T08:15:00Z",
+    "generated_at_utc": "2026-11-21T22:11:36.601199+00:00",
+    "primary": "SENTINEL-2A (NORAD 40697)",
+    "secondary": "COSMOS-2251 DEB (NORAD 34427)",
+    "miss_distance_km": 0.7513,
+    "combined_radius_m": 9.0,
+    "pc": 0.0,
+    "action": "Ignore",
+    "pc_low": 0.0,
+    "pc_high": 1.3244913612561861e-215,
+    "primary_rtn_bounds_km": {
+      "R": {
+        "low": 0.00295,
+        "median": 0.01224,
+        "high": 0.0136
+      },
+      "T": {
+        "low": 0.01843,
+        "median": 0.05362,
+        "high": 0.18228
+      },
+      "N": {
+        "low": 0.0009,
+        "median": 0.0025,
+        "high": 0.00559
+      }
+    },
+    "secondary_rtn_bounds_km": {
+      "R": {
+        "low": 0.00117,
+        "median": 0.00893,
+        "high": 0.01944
+      },
+      "T": {
+        "low": 0.02231,
+        "median": 0.06681,
+        "high": 0.11437
+      },
+      "N": {
+        "low": 0.00192,
+        "median": 0.00536,
+        "high": 0.01906
+      }
+    }
+  },
+  {
+    "event_id": "ASTRA-2026-002",
+    "tca_utc": "2026-11-23T14:40:00Z",
+    "generated_at_utc": "2026-11-21T22:11:36.777198+00:00",
+    "primary": "ISS-ZARYA (NORAD 25544)",
+    "secondary": "FENGYUN-1C DEB (NORAD 31980)",
+    "miss_distance_km": 0.1806,
+    "combined_radius_m": 18.0,
+    "pc": 0.0003910338556138575,
+    "action": "Act",
+    "pc_low": 6.939737312450505e-05,
+    "pc_high": 0.007496528308391328,
+    "primary_rtn_bounds_km": {
+      "R": {
+        "low": 0.11632,
+        "median": 0.61538,
+        "high": 1.10831
+      },
+      "T": {
+        "low": 0.59135,
+        "median": 5.91543,
+        "high": 18.60828
+      },
+      "N": {
+        "low": 0.04219,
+        "median": 0.32633,
+        "high": 1.0917
+      }
+    },
+    "secondary_rtn_bounds_km": {
+      "R": {
+        "low": 0.13564,
+        "median": 0.56957,
+        "high": 1.05555
+      },
+      "T": {
+        "low": 0.5182,
+        "median": 6.66618,
+        "high": 20.95461
+      },
+      "N": {
+        "low": 0.05745,
+        "median": 0.34865,
+        "high": 1.02674
+      }
+    }
+  }
+]
